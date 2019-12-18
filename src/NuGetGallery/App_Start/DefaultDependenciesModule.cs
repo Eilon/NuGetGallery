@@ -21,6 +21,7 @@ using Autofac.Core;
 using Autofac.Extensions.DependencyInjection;
 using Elmah;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
@@ -472,7 +473,8 @@ namespace NuGetGallery
             builder.Populate(services);
         }
 
-        private static ApplicationInsightsConfiguration ConfigureApplicationInsights(
+        // Internal for testing purposes
+        internal static ApplicationInsightsConfiguration ConfigureApplicationInsights(
             IAppConfiguration configuration,
             out ITelemetryClient telemetryClient)
         {
@@ -493,6 +495,13 @@ namespace NuGetGallery
             }
 
             var telemetryConfiguration = applicationInsightsConfiguration.TelemetryConfiguration;
+
+            // Hook-up the TelemetryModules configured in applicationinsights.config into our own
+            // TelemetryConfiguration instance, as this doesn't happen automatically...
+            foreach (var telemetryModule in TelemetryModules.Instance.Modules)
+            {
+                telemetryModule.Initialize(telemetryConfiguration);
+            }
 
             // Add enrichers
             telemetryConfiguration.TelemetryInitializers.Add(new DeploymentIdTelemetryEnricher());
